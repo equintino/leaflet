@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="./assets/css/font-awesome.css">
+    <link rel="stylesheet" href="./node_modules/leaflet/dist/leaflet.css">
+    <!-- <link rel="stylesheet" href="./assets/css/resetView.css"> -->
+    <link rel="stylesheet" href="./assets/css/info.css">
+    <title>Leaflet</title>
+    <style>
+        body {
+            background: black;
+        }
+        .container {
+            height: 380px;
+            display: flex;
+        }
+        #loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            z-index: 999;
+        }
+        @keyframes loading {
+            0% {
+                transform: rotate(0)
+            }
+
+            100% {
+                transform: rotate(360deg)
+            }
+        }
+        .infinite-rotate {
+            animation: loading .8s linear infinite; /* Controle o tempo de giro, mudando o numero. */
+            color: rgb(5, 157, 171);
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+            margin: auto;
+            display: flex;
+        }
+        #search {
+            padding: 2px;
+            border: 1px solid #ccc;
+            margin: 3px;
+            /* background: rgb(235, 233, 233); */
+            color: white;
+            border-radius: 4px;
+        }
+        #search input {
+            /* background: rgb(51, 50, 50); */
+            /* color: rgb(111, 111, 111); */
+            border-radius: 4px;
+        }
+        #search input:focus {
+            outline: none;
+        }
+        #search label {
+            padding: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="infinite-rotate">
+        <i class="fa fa-solid fa-spinner"></i>
+    </div>
+    <div id="search">
+        <label for="country">Country Geolocalization: </label>
+        <input type="search" name="country" id="country" autofocus>
+        <button value="search">Search</button>
+        <span id="found"></span>
+    </div>
+    <main class="container">
+        <div id="map"></div>
+    </main>
+</body>
+<script src="./node_modules/leaflet/dist/leaflet.js"></script>
+<!-- <script src="./assets/js/resetView.js"></script> -->
+<script type="module" src="index.js"></script>
+</html>

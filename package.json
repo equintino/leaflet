@@ -1,0 +1,18 @@
+{
+  "name": "leaflet",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "npx browser-sync -w",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "browser-sync": "^3.0.3",
+    "leaflet": "^1.9.4"
+  }
+}
