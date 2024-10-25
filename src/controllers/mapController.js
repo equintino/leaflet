@@ -1,3 +1,5 @@
+import { captalize } from "../../lib/utils.js";
+
 export default class MapController {
     #map
 
@@ -95,7 +97,7 @@ export default class MapController {
     }
 
     infoUpdate(props) {
-        this._div.innerHTML = props.address ? `<h4>Details</h4> <p>Country: ${props.address.country}</p>` + ( props.addresstype !== 'country' ? `<p>${this.captalize(props.addresstype)}: ${props.address[props.addresstype]}</p>` : '' ) + ( props.address.municipality && props.addresstype !== 'municipality' ? `<p>Municipality: ${props.address.municipality}</p>` : '' ) : null
+        this._div.innerHTML = props.address ? `<h4>Details</h4> <p>Country: ${props.address.country}</p>` + ( props.addresstype !== 'country' ? `<p>${captalize(props.addresstype)}: ${props.address[props.addresstype]}</p>` : '' ) + ( props.address.municipality && props.addresstype !== 'municipality' ? `<p>Municipality: ${props.address.municipality}</p>` : '' ) : null
     }
 
     flyTo(geometry) {
@@ -181,9 +183,5 @@ export default class MapController {
             dashArray: '3',
             fillOpacity: 0.7
         };
-    }
-
-    captalize(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1)
     }
 }
