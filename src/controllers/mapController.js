@@ -2,11 +2,23 @@ import { captalize } from "../../lib/utils.js";
 
 export default class MapController {
     #map
+    geojson
 
     initializer() {
         this.#map = L.map('map').setView([0, 0], 2)
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(this.#map);
+        this.#pane()
+    }
+
+    #pane() {
+        this.#map.createPane('labels')
+        this.#map.getPane('labels').style.zIndex = 650
+        this.#map.getPane('labels').style.pointerEvents = 'none'
+        var positronLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png', {
+            attribution: '©OpenStreetMap, ©CartoDB',
+            pane: 'labels'
         }).addTo(this.#map);
     }
 
@@ -40,7 +52,7 @@ export default class MapController {
     async geoJson({ geojson }) {
         const map = this.#map
         let that = this
-        const _geojspn = L.geoJSON(geojson, {
+        this.geojson = L.geoJSON(geojson, {
             onEachFeature: onEachFeature
         }).addTo(this.#map)
 
@@ -75,7 +87,7 @@ export default class MapController {
         }
 
         function resetHighlight(e) {
-            _geojspn.resetStyle(e.target)
+            that.geojson.resetStyle(e.target)
             that.info({ type: 'update' })
         }
     }
@@ -140,38 +152,38 @@ export default class MapController {
         }
     }
 
-    legendControl() {
+    legendControl({ element }) {
         var legend = L.control({position: 'bottomright'});
 
-        function getColor(d) {
-            return d > 1000 ? '#800026' :
-                   d > 500  ? '#BD0026' :
-                   d > 200  ? '#E31A1C' :
-                   d > 100  ? '#FC4E2A' :
-                   d > 50   ? '#FD8D3C' :
-                   d > 20   ? '#FEB24C' :
-                   d > 10   ? '#FED976' :
-                              '#FFEDA0';
-        }
+        // function getColor(d) {
+        //     return d > 1000 ? '#800026' :
+        //            d > 500  ? '#BD0026' :
+        //            d > 200  ? '#E31A1C' :
+        //            d > 100  ? '#FC4E2A' :
+        //            d > 50   ? '#FD8D3C' :
+        //            d > 20   ? '#FEB24C' :
+        //            d > 10   ? '#FED976' :
+        //                       '#FFEDA0';
+        // }
 
         legend.onAdd = function (map) {
 
-            var div = L.DomUtil.create('div', 'info legend'),
-                grades = [0, 10, 20, 50, 100, 200, 500, 1000],
-                labels = [];
+            var div = L.DomUtil.create('div', 'legend')
+            // var div = L.DomUtil.create('div', 'info legend'),
+            //     grades = [0, 10, 20, 50, 100, 200, 500, 1000],
+            //     labels = [];
 
-            // loop through our density intervals and generate a label with a colored square for each interval
-            for (var i = 0; i < grades.length; i++) {
-                div.innerHTML +=
-                    '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
-                    grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
-            }
+            // // loop through our density intervals and generate a label with a colored square for each interval
+            // for (var i = 0; i < grades.length; i++) {
+            //     div.innerHTML +=
+            //         '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+            //         grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+            // }
 
+            div.innerHTML = element
             return div;
         };
-
-        legend.addTo(map);
-
+        legend.addTo(this.#map);
     }
 
     style(feature) {

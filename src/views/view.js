@@ -29,15 +29,18 @@ export default class View {
         this.#loading.display = display
     }
 
-    found(data, fn) {
-        let select = '<select name="type"><option></option>'
+    found({ data, legendControl, fn }) {
+        let selection = `<h4>${data.length} Occurrences:</h4>`
         data.forEach((e) => {
-            select += `<option title="${e.properties.display_name}" value=${JSON.stringify(e.geometry)}>${e.properties.display_name.slice(0, 20)}...</option>`
+            selection += `<input title="${e.properties.display_name}" type="radio" name="geolocation" value='${JSON.stringify(e.geometry)}' /><label>${e.properties.display_name.slice(0, 20)}...</label><br>`
         })
-        select += '</select>'
-        this.#found.innerHTML = `${data.length} occurrences ${select}`
-        document.querySelector('select[name=type]').addEventListener('change', (e) => {
-            fn(JSON.parse(e.target.value))
+
+        legendControl(selection, () => {
+            document.querySelectorAll('[type=radio]').forEach((e) => {
+                e.addEventListener('change', (_e) => {
+                    fn(JSON.parse(_e.target.value))
+                })
+            })
         })
     }
 }

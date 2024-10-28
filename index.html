@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./node_modules/leaflet/dist/leaflet.css">
     <!-- <link rel="stylesheet" href="./assets/css/resetView.css"> -->
     <link rel="stylesheet" href="./assets/css/info.css">
+    <link rel="stylesheet" href="./assets/css/legend.css">
     <title>Leaflet</title>
     <style>
         body {
@@ -23,6 +24,10 @@
             left: 50%;
             z-index: 999;
         }
+        #loading i {
+            color: rgb(5, 157, 171);
+            font-size: 1.2em;
+        }
         @keyframes loading {
             0% {
                 transform: rotate(0)
@@ -34,7 +39,6 @@
         }
         .infinite-rotate {
             animation: loading .8s linear infinite; /* Controle o tempo de giro, mudando o numero. */
-            color: rgb(5, 157, 171);
         }
         #map {
             height: 100%;

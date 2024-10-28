@@ -1,6 +1,9 @@
 .legend {
     line-height: 18px;
     color: #555;
+    background: #d5d5d5;
+    padding: 0px 8px 6px;
+    border-radius: 5px;
 }
 .legend i {
     width: 18px;

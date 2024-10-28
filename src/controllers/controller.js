@@ -77,9 +77,16 @@ export default class Controller {
             mapController.geoJson({ geojson })
             if (eventType === 'waiting') this.#view.onOffLoading(true)
             if (eventType === 'ready') this.#view.onOffLoading(false)
-            if (eventType === 'found') this.#view.found(
-                data.data, (geometry) => mapController.flyTo(geometry)
-            )
+            if (eventType === 'found') this.#view.found({
+                data: data.data,
+                legendControl: (element, fn) => {
+                    mapController.legendControl({ element })
+                    fn()
+                },
+                fn:(geometry) => {
+                    mapController.flyTo(geometry)
+                }
+            })
         }
     }
 }
