@@ -11,11 +11,6 @@ onmessage = ({ data }) => {
                 postMessage({
                     eventType: 'ready', ...geojson
                 })
-            },
-            found: (data) => {
-                postMessage({
-                    eventType: 'found', data
-                })
             }
         })
     }

@@ -43,10 +43,9 @@ export default class MapController {
         L.polygon( coordinates ).addTo(this.#map)
     }
 
-    async workerGeoJson({ url, ocurrency, found }) {
+    async workerGeoJson({ url, ocurrency }) {
         const geojson = await this.#getGeoJson({ url })
         ocurrency(geojson)
-        found(geojson.features)
     }
 
     async geoJson({ geojson }) {
@@ -55,6 +54,16 @@ export default class MapController {
         this.geojson = L.geoJSON(geojson, {
             onEachFeature: onEachFeature
         }).addTo(this.#map)
+        // console.log(
+        //     'bounds - lat', map.getBounds()._southWest.lat.toFixed(1),
+        //     'bounds - lng', map.getBounds()._southWest.lng.toFixed(1),
+        //     map.on('click', (e) => {
+        //         console.log(
+        //             'lat', e.latlng.lat.toFixed(1),
+        //             'lng', e.latlng.lng.toFixed(1)
+        //         )
+        //     })
+        // )
 
         function onEachFeature(feature, layer) {
             layer.on({
@@ -90,6 +99,7 @@ export default class MapController {
             that.geojson.resetStyle(e.target)
             that.info({ type: 'update' })
         }
+        return map.getBounds()
     }
 
     async #getGeoJson({ url }) {

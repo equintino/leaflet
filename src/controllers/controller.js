@@ -71,22 +71,25 @@ export default class Controller {
                 url: `https://nominatim.openstreetmap.org/search?q=${country}&format=geojson&polygon_geojson=1&addressdetails=1`
             })
         })
-        this.#worker.onmessage = ({ data }) => {
+        this.#worker.onmessage = async ({ data }) => {
             const geojson = data.features
             const eventType = data.eventType
-            mapController.geoJson({ geojson })
+            const bounds = await mapController.geoJson({ geojson })
             if (eventType === 'waiting') this.#view.onOffLoading(true)
-            if (eventType === 'ready') this.#view.onOffLoading(false)
-            if (eventType === 'found') this.#view.found({
-                data: data.data,
-                legendControl: (element, fn) => {
-                    mapController.legendControl({ element })
-                    fn()
-                },
-                fn:(geometry) => {
-                    mapController.flyTo(geometry)
-                }
-            })
+            if (eventType === 'ready') {
+                this.#view.onOffLoading(false)
+                this.#view.found({
+                    data: geojson,
+                    legendControl: (element, fn) => {
+                        mapController.legendControl({ element })
+                        fn()
+                    },
+                    fn:(geometry) => {
+                        mapController.flyTo(geometry)
+                    },
+                    bounds
+                })
+            }
         }
     }
 }
