@@ -4,6 +4,7 @@
     background: #d5d5d5;
     padding: 0px 8px 6px;
     border-radius: 5px;
+    border: double 2px #b7b5b5;
 }
 .legend i {
     width: 18px;
