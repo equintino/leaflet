@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@turf/turf": "^7.1.0",
     "browser-sync": "^3.0.3",
     "leaflet": "^1.9.4"
   }

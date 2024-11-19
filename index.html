@@ -8,15 +8,26 @@
     <!-- <link rel="stylesheet" href="./assets/css/resetView.css"> -->
     <link rel="stylesheet" href="./assets/css/info.css">
     <link rel="stylesheet" href="./assets/css/legend.css">
+    <link rel="stylesheet" href="./assets/css/myLocalization.css">
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/tomickigrzegorz/autocomplete@2.0.2/dist/css/autocomplete.min.css"/> -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/tomickigrzegorz/autocomplete@1.8.6/dist/css/autocomplete.min.css"
+    />
     <title>Leaflet</title>
     <style>
-        body {
+        /* body {
             background: black;
         }
         .container {
-            height: 380px;
+            height: 100%;
+            max-height: 520px;
             display: flex;
-        }
+            padding: 5px;
+            width: 100%;
+            max-width: 600px;
+            margin: 0px auto;
+        } */
         #loading {
             display: none;
             position: fixed;
@@ -41,47 +52,265 @@
             animation: loading .8s linear infinite; /* Controle o tempo de giro, mudando o numero. */
         }
         #map {
-            height: 100%;
-            width: 100%;
-            margin: auto;
-            display: flex;
+            /* height: 100%; */
+            /* width: 100%; */
+            /* margin: auto; */
+            /* display: flex; */
         }
-        #search {
-            padding: 2px;
-            border: 1px solid #ccc;
-            margin: 3px;
+        /* #search {
+            /* padding: 10px; */
+            /* border: 1px solid #ccc; */
+            /* margin: 3px; */
             /* background: rgb(235, 233, 233); */
-            color: white;
-            border-radius: 4px;
+            /* color: white; */
+            /* border-radius: 4px;
         }
         #search input {
             /* background: rgb(51, 50, 50); */
             /* color: rgb(111, 111, 111); */
-            border-radius: 4px;
+            /* border-radius: 4px;
+            border: none;
         }
         #search input:focus {
             outline: none;
         }
         #search label {
-            padding: 3px;
+            /* padding: 3px;
+        }*/
+        /* .cities {
+            display: flex;
+            align-items: center;
+            margin: 10px auto;
+        }
+
+
+
+        *,
+        :after,
+        :before {
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+        } */
+
+        /* html {
+            height: 100%;
+        } */
+
+        /* body,
+        html,
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+            sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f1f1;
+        }
+
+        .cities > * {
+            margin-left: 10px;
+        }
+
+        .cities label {
+            display: block;
+            margin-bottom: 0px;
+            padding: 10px 3px 5px;
+            cursor: pointer;
+            margin-left: -3px;
+            text-transform: uppercase;
+            font-size: 70%;
+        }*/
+
+        .length {
+            position: absolute;
+            padding: 4px 10px;
+            background: #fff;
+            bottom: 0;
+            z-index: 999;
+        }
+
+        input#search {
+            border-radius: 5px 0 0 5px;
+            border: 1px solid gray;
+            border-right: none;
+        }
+
+        .search {
+            border-radius: 0 5px 5px 0;
+            border: 1px solid gray;
+            border-left: none;
+            padding: 0 15px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+
+        .search i {
+            font-size: 1.2em;
+        }
+
+        .clear-distance, .btn {
+            border: 0;
+            background: #d3d3d3;
+            color: #000;
+            font-weight: 600;
+            /* margin-top: 28px; */
+            height: 44px;
+            padding: 0 20px;
+            margin: 1px 1px 0;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 300ms ease-in-out;
+        }
+
+        .clear-distance:hover, .btn:hover {
+            background: #000;
+            color: #d3d3d3;
+        }
+
+
+
+        *,
+        :after,
+        :before {
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body,
+        html,
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+            sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            height: 100%;
+            min-height: 100%;
+            padding: 0;
+            margin: 0;
+            background-color: #f1f1f1;
+        }
+
+        .container {
+            display: flex;
+            padding: 5px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+
+        .auto-results-wrapper {
+            max-height: 400px;
+            overflow: scroll;
+            border: 2px solid #f1f1f1;
+        }
+
+        .auto-results-wrapper li {
+            border: 2px solid #f1f1f1;
+        }
+
+        .auto-results-wrapper li:hover {
+            background-color: #e4e3e3;
         }
     </style>
 </head>
 <body>
+
     <div id="loading" class="infinite-rotate">
         <i class="fa fa-solid fa-spinner"></i>
     </div>
-    <div id="search">
-        <label for="country">Country Geolocalization: </label>
-        <input type="search" name="country" id="country" autofocus>
-        <button value="search">Search</button>
-        <span id="found"></span>
+
+
+    <!-- search container -->
+    <div class="container">
+        <div class="auto-search-wrapper loupe">
+            <input
+                type="text"
+                autocomplete="off"
+                id="search"
+                placeholder="enter the city name",
+                autofocus
+            />
+        </div>
+        <button class="search" value="search"><i class="fa fa-search"></i></button>
+        <button class="clear-distance clear">CLEAR</button>
     </div>
-    <main class="container">
+
+    <!-- <div class="cities">
+        <div class="city">
+          <label for="country">Country Geolocalization</label>
+          <div id="search" class="auto-search-wrapper">
+            <input name="country" autofocus type="text" autocomplete="off" id="country" placeholder="Country" />
+          </div>
+        </div>
+        <button class="clear-distance">CLEAR</button>
+    </div> -->
+
+    <!-- <div class="cities">
+        <div class="city">
+            <label for="country">Country Geolocalization: </label>
+            <div id="search" class="auto-search-wrapper">
+                <input type="search" name="country" id="country" autofocus placeholder="Country">
+            </div>
+        </div>
+        <button value="search" class="btn">Search</button>
+        <span id="found"></span>
+    </div> -->
+
+    <!-- <div class="cities">
+        <div class="city">
+          <label for="cityA">Distance from</label>
+          <div class="auto-search-wrapper">
+            <input type="text" autocomplete="off" id="cityA" placeholder="City distance from" />
+          </div>
+        </div>
+        <div class="city">
+          <label for="cityB">Distance to</label>
+          <div class="auto-search-wrapper">
+            <input type="text" autocomplete="off" id="cityB" placeholder="City distance to" />
+          </div>
+        </div>
+        <button class="clear-distance">CLEAR</button>
+    </div> -->
+
+      <!-- <div class="container">
+        <div class="auto-search-wrapper loupe">
+          <input type="text" autocomplete="off" id="search" placeholder="enter the city name"><div class="auto-results-wrapper"><ul id="auto-search-results" tabindex="0" role="listbox"></ul></div><button class="auto-clear hidden" type="button" title="clear the search query" aria-label="clear the search query"></button>
+        </div>
+      </div> -->
+    <div class="length">Select cities</div>
+    <!-- <main class="container"> -->
         <div id="map"></div>
-    </main>
+    <!-- </main> -->
 </body>
-<script src="./node_modules/leaflet/dist/leaflet.js"></script>
+<!-- <script src="./node_modules/leaflet/dist/leaflet.js"></script> -->
 <!-- <script src="./assets/js/resetView.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/gh/tomickigrzegorz/autocomplete@2.0.2/dist/js/autocomplete.min.js"></script> -->
+<script src="https://cdn.jsdelivr.net/gh/tomickigrzegorz/autocomplete@1.8.6/dist/js/autocomplete.min.js"></script>
 <script type="module" src="index.js"></script>
 </html>

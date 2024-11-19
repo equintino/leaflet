@@ -1,26 +1,30 @@
 import MapController from "./mapController.js"
 
 export default class Controller {
-    #view
-    #worker
-    #events = {
+    view
+    service
+    worker
+    loading
+    events = {
         reading: 'waiting',
-        ready: 'ready'
+        ready  : 'ready'
     }
 
-    constructor({ view, worker }) {
-        this.#view = view
-        this.#worker = worker
+    constructor({ view, service, worker }) {
+        this.view    = view
+        this.service = service
+        this.worker  = worker
     }
 
     static initializer(deps) {
         const controller = new Controller(deps)
-        controller.init()
+        this.loading = controller.view.onOffLoading
+        controller.initMap()
     }
 
-    async init() {
+    initMap() {
         const mapController = new MapController()
-        mapController.initializer()
+        mapController.init([0, 0], 2)
 
         // mapController.marker({
         //     coordinates: {
@@ -63,32 +67,5 @@ export default class Controller {
         //         geojson
         //     })
         // }
-
-        this.#view.setEvents(({ country }) => {
-            mapController.mapReload()
-            this.#worker.postMessage({ eventType: this.#events.reading })
-            this.#worker.postMessage({
-                url: `https://nominatim.openstreetmap.org/search?q=${country}&format=geojson&polygon_geojson=1&addressdetails=1`
-            })
-        })
-        this.#worker.onmessage = ({ data }) => {
-            const geojson = data.features
-            const eventType = data.eventType
-            mapController.geoJson({ geojson })
-            if (eventType === 'waiting') this.#view.onOffLoading(true)
-            if (eventType === 'ready') {
-                this.#view.onOffLoading(false)
-                this.#view.found({
-                    data: geojson,
-                    legendControl: (element, fn) => {
-                        mapController.legendControl({ element })
-                        fn()
-                    },
-                    fn:(geometry) => {
-                        mapController.flyTo(geometry)
-                    }
-                })
-            }
-        }
     }
 }
