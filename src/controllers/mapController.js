@@ -52,6 +52,12 @@ export default class MapController extends AbstractController {
         })
     }
 
+    distance(feature) {
+        const from = this.#locate
+        const to   = turf.center(feature).geometry.coordinates.reverse()
+        if (from) return this.formatNumber(parseInt(from.distanceTo(to)))
+    }
+
     async search() {
         const that = this
         this.view.actionSearch({
@@ -59,7 +65,8 @@ export default class MapController extends AbstractController {
             reverse: that.#reverse,
             greatCircle: feature => this.greatCircle(feature),
             map: this.service.getMap(),
-            validateJson: this.validateJson
+            validateJson: this.validateJson,
+            distance: place => this.distance(place)
         })
 
 
@@ -185,7 +192,8 @@ export default class MapController extends AbstractController {
 
     greatCircle(feature) {
         if (!feature) return
-        const map = this.service.getMap()
+        const that = this
+        const map  = this.service.getMap()
         /* eslint-disable no-undef */
         /** great-circle */
 
@@ -229,24 +237,13 @@ export default class MapController extends AbstractController {
 
             let featureGroups = [locate];
 
-            function formatNumber(num) {
-                const formatter = new Intl.NumberFormat("en-US", { // Make users locale dynamic
-                    style: 'unit',
-                    unit: 'kilometer',
-                    unitDisplay: 'short',
-                    maximumFractionDigits: 0
-                });
-
-                return formatter.format(num) // km
-            }
-
             cityCoords.map((city) => {
                 // all markers to map
                 const marker   = L.marker(city, {
                     id: turfId
                 })
                 const distance = parseInt(locate.getLatLng().distanceTo(marker.getLatLng()))
-                const popup    = `${feature.properties.display_name}<strong><p>Distance Straight: ${formatNumber(distance)} approximately</p></strong>` //city.toString()
+                const popup    = `${feature.properties.display_name}<strong><p>Distance Straight: ${that.formatNumber(distance)} approximately</p></strong>` //city.toString()
 
                 marker.bindPopup(popup).addTo(map);
 
@@ -255,7 +252,6 @@ export default class MapController extends AbstractController {
 
                 // end point
                 const end = turf.point(city.reverse());
-
 
                 map.eachLayer((layer) => {
                     if (layer.options.id
@@ -276,7 +272,6 @@ export default class MapController extends AbstractController {
 
                 // distance between two points
                 let greatCircle = turf.greatCircle(start, end);
-
 
                 // set geoJSON to map
                 L.geoJSON(greatCircle, {
@@ -713,5 +708,16 @@ export default class MapController extends AbstractController {
             dashArray: '3',
             fillOpacity: 0.7
         };
+    }
+
+    formatNumber(num) {
+        const formatter = new Intl.NumberFormat("en-US", { // Make users locale dynamic
+            style: 'unit',
+            unit: 'kilometer',
+            unitDisplay: 'short',
+            maximumFractionDigits: 0
+        });
+
+        return formatter.format(num) // km
     }
 }

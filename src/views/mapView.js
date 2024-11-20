@@ -27,7 +27,7 @@ export default class MapView extends AbstractView {
         document.querySelector('#search').focus()
     }
 
-    actionSearch({ getFeatures, reverse, greatCircle, map, validateJson }) {
+    actionSearch({ getFeatures, reverse, greatCircle, map, validateJson, distance }) {
         const that = this
         async function search() {
             document.querySelector('.auto-results-wrapper')
@@ -44,7 +44,9 @@ export default class MapView extends AbstractView {
                 const value = JSON.stringify(e)
                 ul += '<li class="loupe" role="option" data=\''
                     + value + '\'><b>' + (i+1) + '</b> - '
-                    + e.properties.display_name + '</li>'
+                    + e.properties.display_name + (
+                        distance(e) ? '<p><b>(' + distance(e) + ' - from where I am to here in a straight line approximately)</b></p>' : ''
+                    ) + '</li>'
             })
             ul += '</ul>'
 
@@ -72,8 +74,12 @@ export default class MapView extends AbstractView {
             document.querySelector('.auto-results-wrapper').addEventListener('click',
                 e => {
                     that.view.onOffLoading(true)
-                    if (!validateJson(e.target.attributes['data'].value)) return
-                    const results = validateJson(e.target.attributes['data'].value)
+                    let results = e.target.offsetParent && e.target.offsetParent.tagName === 'LI'
+                        ? e.target.offsetParent.attributes['data'].value
+                        : e.target.attributes['data'].value
+
+                    if (!validateJson(results)) return
+                    results = validateJson(results)
                     const { type } = results.geometry
                     const coordinates = reverse(results.geometry).coordinates
                     const { display_name } = results.properties
