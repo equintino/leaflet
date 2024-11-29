@@ -1,3 +1,4 @@
+import { captalize } from "../../lib/utils.js"
 import MapController from "./mapController.js"
 
 export default class Controller {

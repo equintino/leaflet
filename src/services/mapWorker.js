@@ -7,17 +7,4 @@ onmessage = async ({ data }) => {
     const response = await service.getApi(currentValue)
 
     postMessage({ eventType: 'ready', response })
-    // const mapController = new MapController()
-    // const { url, eventType } = data
-    // postMessage({ eventType })
-    // if (url) {
-    //     mapController.workerGeoJson({
-    //         url,
-    //         ocurrency: (geojson) => {
-    //             postMessage({
-    //                 eventType: 'ready', ...geojson
-    //             })
-    //         }
-    //     })
-    // }
 }

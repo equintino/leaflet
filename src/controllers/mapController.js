@@ -1,7 +1,7 @@
 import AbstractController from "./abstractController.js";
-import { captalize } from "../../lib/utils.js";
 import MapView from "../views/mapView.js";
 import MapService from "../services/mapService.js";
+import { captalize } from "../../lib/utils.js";
 
 export default class MapController extends AbstractController {
     #map
@@ -26,7 +26,7 @@ export default class MapController extends AbstractController {
         this.service.initializer({ coord, zoom })
         this.pane()
         this.myLocalization()
-        this.search()
+        this.search({ libAutocomplete: false })
     }
 
     pane() {
@@ -58,124 +58,163 @@ export default class MapController extends AbstractController {
         if (from) return this.formatNumber(parseInt(from.distanceTo(to)))
     }
 
-    async search() {
-        const that = this
-        this.view.actionSearch({
-            getFeatures: that.service.getApi,
-            reverse: that.#reverse,
-            greatCircle: feature => this.greatCircle(feature),
-            map: this.service.getMap(),
-            validateJson: this.validateJson,
-            distance: place => this.distance(place)
-        })
-
-
-        return
-        this.view.setEvents(({ country }) => {
-            mapController.mapReload()
-            this.worker.postMessage({ eventType: this.events.reading })
-            this.worker.postMessage({
-                url: `https://nominatim.openstreetmap.org/search?q=${country}&format=geojson&polygon_geojson=1&addressdetails=1`
-            })
-        })
-        this.worker.onmessage = ({ data }) => {
-            const geojson   = data.features
-            const eventType = data.eventType
-            mapController.geoJson({ geojson })
-            if (eventType === 'waiting') this.view.onOffLoading(true)
-            if (eventType === 'ready') {
-                this.view.onOffLoading(false)
-                this.view.found({
-                    data: geojson,
-                    legendControl: (element, fn) => {
-                        mapController.legendControl({ element })
-                        fn()
-                    },
-                    fn:(feature) => {
-                        mapController.flyTo(feature)
-                    }
-                })
-            }
+    async getFeatures(currentValue) {
+        /** Via Worker */
+        if (Worker) {
+            this.worker.postMessage({ eventType: 'reading' })
+            this.worker.postMessage({ currentValue })
         }
+        else {
+            this.#viewSearch({
+                features: await this.service.getApi(currentValue)
+            })
+        }
+    }
 
+    search({ libAutocomplete }) {
+        const that = this
+        const map  = this.service.getMap()
+        if (!libAutocomplete) {
+            this.view.setEventSearch((currentValue) => {
+                this.getFeatures(currentValue)
+                this.worker.onmessage = ({ data }) => {
+                    const { eventType, response } = data
+                    const regexp = new RegExp('undefined', 'i')
+                    this.view.onOffLoading(true)
+                    if (eventType === 'ready') {
+                        let found = response.filter(feature => {
+                            return regexp.exec(feature.properties.display_name)
+                        })
+                        if (found.length !== 0) return
+                        this.#viewSearch({ features: response, map })
+                    }
+                }
+            })
+        }
+        else {
+            /** geocoding addresses search engine outside the map */
+            new Autocomplete('search', {
+                delay: 1000,
+                selectFirst: true,
+                howManyCharacters: 2,
+                onSearch: ({ currentValue }) => {
+                    /** Promise */
+                    this.view.onOffLoading(true)
+                    return this.service.getApi(currentValue)
+                },
+                // nominatim
+                onResults: ({ currentValue, matches, template }) => {
+                    const regex = new RegExp(currentValue, "i");
+                    // checking if we have results if we don't
+                    // take data from the noResults method
+                    this.view.onOffLoading(false)
+                    this.view.autoCompleteClear({ cleanData: _ => this.service.cleanData() })
 
-        return
-        /** geocoding addresses search engine outside the map */
-        new Autocomplete('search', {
-            delay: 1000,
-            selectFirst: true,
-            howManyCharacters: 2,
-            onSearch: ({ currentValue }) => {
-                /** Promise */
-                this.view.onOffLoading(true)
-                return this.service.getApi(currentValue)
-            },
-            // nominatim
-            onResults: ({ currentValue, matches, template }) => {
-                const regex = new RegExp(currentValue, "i");
-                // checking if we have results if we don't
-                // take data from the noResults method
-                this.view.onOffLoading(false)
-                return ( matches === 0 ? template : matches )
-                    .map((element) => {
-                        return `
-                            <li class="loupe" role="option">
-                            ${element.properties.display_name.replace(
-                                regex, (str) => `<b>${str}</b>`
-                            )} </li>
-                        `
-                    })
-                    .join("");
-            },
-            onSubmit: ({ object }) => {
-                that.view.onOffLoading(true)
-                const { display_name } = object.properties
-                const { type } = object.geometry
-                // custom id for marker
-                const customId = Math.random();
-                const cord = (
-                    !object.geometry.reverse
-                    ? that.#reverse(object.geometry).coordinates
-                    : object.geometry.coordinates
-                )
+                    return ( matches === 0 ? template : matches )
+                        .map((element) => {
+                            return `
+                                <li class="loupe" role="option">
+                                ${element.properties.display_name.replace(
+                                    regex, (str) => `<b>${str}</b>`
+                                )} </li>
+                            `
+                        })
+                        .join("");
+                },
+                onSubmit: ({ object }) => {
+                    that.view.onOffLoading(true)
+                    const { display_name } = object.properties
+                    const { type } = object.geometry
+                    // custom id for marker
+                    const customId = Math.random();
+                    const cord = (
+                        !object.geometry.reverse
+                        ? that.#reverse(object.geometry).coordinates
+                        : object.geometry.coordinates
+                    )
+                    const marker = (
+                        type === 'MultiPolygon' || type === 'Polygon' || type === 'LineString' ? L.polygon(cord)
+                        : L.marker(cord, {
+                            title: display_name,
+                            id: customId
+                        })
+                    )
+
+                    marker.addTo(map).bindPopup(display_name);
+
+                    if (that.view.checkLocate()) {
+                        that.view.autoCompleteClear({ cleanData: _ => this.service.cleanData() })
+                        that.view.cleanData({ locate: true })
+                        // turf
+                        that.greatCircle(object)
+                    }
+                    else {
+                        if (type === 'Polygon' || type === 'MultiPolygon' || type === 'LineString') map.fitBounds(cord)
+
+                        if (type === 'Point') map.setView(cord, 8);
+                    }
+
+                    map.eachLayer(function (layer) {
+                        if (layer.options && layer.options.pane === "markerPane") {
+                            if (layer.options.id !== customId) map.removeLayer(layer)
+                        }
+                    });
+                    that.view.onOffLoading(false)
+                },
+                // get index and data from li element after
+                // hovering over li with the mouse or using
+                // arrow keys ↓ | ↑
+                onSelectedItem: ({ index, element, object }) => {
+                    console.log("onSelectedItem:", index, element, object);
+                },
+                // the method presents no results
+                noResults: ({ currentValue, template }) => {
+                    return template(`<li>No results found: "${currentValue}"</li>`)
+                }
+            })
+        }
+    }
+
+    #viewSearch({ features }) {
+        const map = this.service.getMap()
+        this.view.search({
+            features: this.#reverse(features),
+            distance: feature => this.distance(feature),
+            fn: ({ results, checkLocate }) => {
+                const _results = this.validateJson(results)
+                if (!_results) return
+
+                const { type, coordinates } = _results.geometry
+                const { display_name } = _results.properties
+                const customId = Math.random()
                 const marker = (
-                    type === 'MultiPolygon' || type === 'Polygon' || type === 'LineString' ? L.polygon(cord)
-                    : L.marker(cord, {
+                    type === 'MultiPolygon' || type === 'Polygon' || type === 'LineString' ? L.polygon(coordinates, {
+                        id: customId
+                    })
+                    : L.marker(coordinates, {
                         title: display_name,
                         id: customId
                     })
                 )
+                map.eachLayer((layer) => {
+                    if (layer.options.id && layer.options.id !== customId) {
+                        map.removeLayer(layer)
+                    }
+                })
 
                 marker.addTo(map).bindPopup(display_name);
 
-                if (that.view.checkLocate()) {
-                    that.view.cleanData({ locate: true })
-                    that.service.cleanData()
+                if (checkLocate()) {
                     // turf
-                    that.greatCircle(object)
+                    this.greatCircle(_results)
                 }
                 else {
-                    if (type === 'Polygon' || type === 'MultiPolygon' || type === 'LineString') map.fitBounds(cord)
+                    if (type === 'Polygon' || type === 'MultiPolygon'
+                        || type === 'LineString') map.fitBounds(coordinates)
 
-                    if (type === 'Point') map.setView(cord, 8);
+                    if (type === 'Point') map.setView(coordinates, 8);
                 }
-
-                map.eachLayer(function (layer) {
-                    if (layer.options && layer.options.pane === "markerPane") {
-                        if (layer.options.id !== customId) map.removeLayer(layer)
-                    }
-                });
-                that.view.onOffLoading(false)
-            },
-            // get index and data from li element after
-            // hovering over li with the mouse or using
-            // arrow keys ↓ | ↑
-            onSelectedItem: ({ index, element, object }) => {
-                console.log("onSelectedItem:", index, element, object);
-            },
-            // the method presents no results
-            noResults: ({ currentValue, template }) => {
-                return template(`<li>No results found: "${currentValue}"</li>`)
+                this.view.onOffLoading(false)
             }
         })
     }
@@ -508,28 +547,41 @@ export default class MapController extends AbstractController {
     // }
 
     #reverse(feature) {
-        if (feature.type === 'Point') {
-            feature.coordinates = [
-                feature.coordinates[1],
-                feature.coordinates[0]
-            ]
+        let features = []
+        if (Array.isArray(feature)) {
+            feature.forEach((_feature) => {
+                _feature.geometry = reverse(_feature.geometry)
+                features.push(_feature)
+            })
+            return features
         }
+        else {
+            return reverse(feature)
+        }
+        function reverse(feature) {
+            if (feature.type === 'Point') {
+                feature.coordinates = [
+                    feature.coordinates[1],
+                    feature.coordinates[0]
+                ]
+            }
 
-        let coord = []
-        feature.coordinates.forEach((e) => {
-            if (feature.type === 'Polygon') {
-                feature.coordinates = e.map((_e) => [_e[1], _e[0]])
-            }
-            if (feature.type === 'MultiPolygon') {
-                coord.push([
-                    e[0].map((_e) => [ _e[1], _e[0] ])
-                ])
-            }
-            if (feature.type === 'LineString') coord.push([e[1], e[0]])
-        })
-        if (feature.type === 'MultiPolygon' || feature.type === 'LineString') feature.coordinates = coord
-        feature.reverse = true
-        return feature
+            let coord = []
+            feature.coordinates.forEach((e) => {
+                if (feature.type === 'Polygon') {
+                    feature.coordinates = e.map((_e) => [_e[1], _e[0]])
+                }
+                if (feature.type === 'MultiPolygon') {
+                    coord.push([
+                        e[0].map((_e) => [ _e[1], _e[0] ])
+                    ])
+                }
+                if (feature.type === 'LineString') coord.push([e[1], e[0]])
+            })
+            if (feature.type === 'MultiPolygon' || feature.type === 'LineString') feature.coordinates = coord
+            feature.reverse = true
+            return feature
+        }
     }
 
     mapReload() {

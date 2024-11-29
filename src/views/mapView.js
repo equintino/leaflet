@@ -1,6 +1,7 @@
 import AbstractView from "./abstractView.js"
 
 export default class MapView extends AbstractView {
+    #search = document.querySelector('#search')
 
     initializer({ cleanData }) {
         document.querySelector('.clear').addEventListener('click', () => {
@@ -18,29 +19,50 @@ export default class MapView extends AbstractView {
     cleanData({ locate, cleanData }) {
         if (typeof(cleanData) === 'function') cleanData()
         document.querySelector('#search').value = ''
-        document.querySelector('.auto-results-wrapper')
-            ? document.querySelector('.auto-results-wrapper').remove()
-            : null
+        if (document.querySelector('.auto-results-wrapper')
+            && document.querySelector('.auto-is-active')) {
+                document.querySelector('.auto-is-active')
+                    .classList.remove('auto-is-active')
+            // document.querySelectorAll('.auto-results-wrapper li').forEach((elem) => {
+            //     elem.remove()
+            // })
+        }
+
         if (!locate && document.querySelector('.locate-active')) {
-            document.querySelector('.locate-active').classList.remove('locate-active')
+            document.querySelector('.locate-active')
+                .classList.remove('locate-active')
         }
         document.querySelector('#search').focus()
     }
 
-    actionSearch({ getFeatures, reverse, greatCircle, map, validateJson, distance }) {
-        const that = this
-        async function search() {
-            document.querySelector('.auto-results-wrapper')
-                ? document.querySelector('.auto-results-wrapper').remove() : null
-            that.view.onOffLoading(true)
-            const currentValue = document.querySelector('#search').value
-            const div = document.createElement('div')
-            div.setAttribute('class', 'auto-results-wrapper auto-is-active')
-            let ul = '<ul>'
+    autoCompleteClear({ cleanData }) {
+        document.querySelector('#search').addEventListener('mouseover', () => {
+            if (document.querySelector('.auto-results-wrapper')) {
+                document.querySelector('.auto-results-wrapper')
+                    .classList.add('auto-is-active')
+            }
+        })
+        document.querySelector('.auto-results-wrapper')
+            .addEventListener('mouseleave', () => {
+                document.querySelector('.auto-results-wrapper')
+                    .classList.remove('auto-is-active')
+        })
+        document.querySelector('.auto-clear').onclick = () => {
+            const locate = (
+                document.querySelector('.locate-active') ? true : false
+            )
+            this.cleanData({ locate, cleanData })
+        }
+    }
 
-            const features = await getFeatures(currentValue)
-            features.forEach((e, i) => {
-                that.view.onOffLoading(false)
+    async #createListResults({ features, distance }) {
+        const _features = await features
+        const div = document.createElement('div')
+        div.setAttribute('class', 'auto-results-wrapper auto-is-active')
+        let ul = '<ul>'
+
+        if (_features.length > 0) {
+            _features.forEach((e, i) => {
                 const value = JSON.stringify(e)
                 ul += '<li class="loupe" role="option" data=\''
                     + value + '\'><b>' + (i+1) + '</b> - '
@@ -48,78 +70,83 @@ export default class MapView extends AbstractView {
                         distance(e) ? '<p><b>(' + distance(e) + ' - from where I am to here in a straight line approximately)</b></p>' : ''
                     ) + '</li>'
             })
-            ul += '</ul>'
-
-            div.innerHTML = ul
-            document.querySelector('.auto-search-wrapper').append(div)
-            document.querySelector('.auto-is-active').addEventListener('mouseleave',
-                e => {
-                    e.target.classList
-                        .remove('auto-is-active')
-                })
-
-            document.querySelector('.auto-is-active').addEventListener('click',
-                e => {
-                    e.target.parentElement.parentElement
-                        .classList
-                        .remove('auto-is-active')
-                })
-            document.querySelector('#search').addEventListener('mouseover', _ => {
-                if (document.querySelector('.auto-results-wrapper')) {
-                    document.querySelector('.auto-results-wrapper')
-                        .classList.add('auto-is-active')
-                }
-            })
-
-            document.querySelector('.auto-results-wrapper').addEventListener('click',
-                e => {
-                    that.view.onOffLoading(true)
-                    let results = e.target.offsetParent && e.target.offsetParent.tagName === 'LI'
-                        ? e.target.offsetParent.attributes['data'].value
-                        : e.target.attributes['data'].value
-
-                    if (!validateJson(results)) return
-                    results = validateJson(results)
-                    const { type } = results.geometry
-                    const coordinates = reverse(results.geometry).coordinates
-                    const { display_name } = results.properties
-                    const customId = Math.random()
-                    const marker = (
-                        type === 'MultiPolygon' || type === 'Polygon' || type === 'LineString' ? L.polygon(coordinates, {
-                            id: customId
-                        })
-                        : L.marker(coordinates, {
-                            title: display_name,
-                            id: customId
-                        })
-                    )
-                    map.eachLayer((layer) => {
-                        if (layer.options.id && layer.options.id !== customId) {
-                            map.removeLayer(layer)
-                        }
-                    })
-
-                    marker.addTo(map).bindPopup(display_name);
-
-                    if (that.checkLocate()) {
-                        // turf
-                        greatCircle(results)
-                    }
-                    else {
-                        if (type === 'Polygon' || type === 'MultiPolygon' || type === 'LineString') map.fitBounds(coordinates)
-
-                        if (type === 'Point') map.setView(coordinates, 8);
-                    }
-                    that.view.onOffLoading(false)
-            })
         }
+        else {
+            ul += `<li class="loupe" role="option" data="" >No found results</li>`
+        }
+        ul += '</ul>'
 
+        this.view.onOffLoading(false)
+        div.innerHTML = ul
+        return div
+    }
+
+    async search({ features, distance, fn }) {
+        const that = this
+        document.querySelector('.auto-results-wrapper')
+            ? document.querySelector('.auto-results-wrapper').remove() : null
+        this.view.onOffLoading(true)
+
+        const div = await this.#createListResults({ features, distance })
+        document.querySelector('.auto-search-wrapper').append(div)
+        document.querySelector('.auto-is-active').addEventListener('mouseleave',
+            e => {
+                e.target.classList
+                    .remove('auto-is-active')
+            })
+
+        document.querySelector('.auto-is-active').addEventListener('click',
+            e => {
+                e.target.parentElement.parentElement
+                    .classList
+                    .remove('auto-is-active')
+            })
+        document.querySelector('#search').addEventListener('mouseover', _ => {
+            if (document.querySelector('.auto-results-wrapper')) {
+                document.querySelector('.auto-results-wrapper')
+                    .classList.add('auto-is-active')
+            }
+        })
+
+        document.querySelector('.auto-results-wrapper').addEventListener('click',
+            e => {
+                let results = e.target.offsetParent
+                    && e.target.offsetParent.tagName === 'LI'
+                        ? e.target.offsetParent.attributes['data'].value
+                        : e.target.attributes['data'] ? e.target.attributes['data'].value : that.view.onOffLoading(false)
+
+                if (!results) return
+                that.view.onOffLoading(true)
+                fn({ results, checkLocate: this.checkLocate})
+        })
+    }
+
+    // actionSearch({ getFeatures, reverse, greatCircle, map, validateJson, distance }) {
+    //     const that = this
+    //     document.querySelector('button[value=search]').addEventListener('click',
+    //         async (e) => {
+    //             const currentValue = document.querySelector('#search').value
+    //             that.search({ currentValue, getFeatures, distance, validateJson, reverse, map, greatCircle })
+    //         })
+    //     document.querySelector('#search').addEventListener('keypress',
+    //         async (e) => {
+    //             const currentValue = e.target.value
+    //             if (e.keyCode && e.keyCode !== 13) return
+    //             that.search({ currentValue, getFeatures, distance, validateJson, reverse, map, greatCircle })
+    //         })
+    // }
+
+    setEventSearch(fn) {
         document.querySelector('button[value=search]').addEventListener('click',
-            async (e) => search({ e }))
+            (e) => {
+                const currentValue = document.querySelector('#search').value
+                fn(currentValue)
+            })
         document.querySelector('#search').addEventListener('keypress',
-            async (e) => {
+            (e) => {
+                const currentValue = e.target.value
                 if (e.keyCode && e.keyCode !== 13) return
-                search({ e })
+                fn(currentValue)
             })
     }
 }
