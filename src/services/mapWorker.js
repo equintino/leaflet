@@ -1,4 +1,3 @@
-import MapController from "../controllers/mapController.js"
 import MapService from "./mapService.js"
 
 onmessage = async ({ data }) => {

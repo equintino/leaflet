@@ -27,6 +27,22 @@ export default class MapController extends AbstractController {
         this.pane()
         this.myLocalization()
         this.search({ libAutocomplete: false })
+        this.mapInteractive()
+    }
+
+    mapInteractive() {
+        const map = this.service.getMap()
+        this.view.mapInteractive()
+
+        map.on('click', async (e) => {
+            this.view.onOffLoading(true)
+            const features = await this.service.getApiIntective({
+                latlng: e.latlng,
+                zoom: map.getZoom(),
+            })
+
+            this.#viewSearch({ features, interactive: true })
+        })
     }
 
     pane() {
@@ -55,7 +71,7 @@ export default class MapController extends AbstractController {
     distance(feature) {
         const from = this.#locate
         const to   = turf.center(feature).geometry.coordinates.reverse()
-        if (from) return this.formatNumber(parseInt(from.distanceTo(to)))
+        if (from) return this.formatNumber(parseFloat(from.distanceTo(to)))
     }
 
     async getFeatures(currentValue) {
@@ -175,10 +191,45 @@ export default class MapController extends AbstractController {
         }
     }
 
-    #viewSearch({ features }) {
+    #viewSearch({ features, interactive }) {
         const map = this.service.getMap()
+        const _features = this.#reverse(features)
+        if (interactive && features) {
+            const { type, coordinates } = _features[0].geometry
+            const { display_name } = _features[0].properties
+            const customId = Math.random()
+            const marker = (
+                type === 'MultiPolygon' || type === 'Polygon' || type === 'LineString' ? L.polygon(coordinates, {
+                    id: customId
+                })
+                : L.marker(coordinates, {
+                    title: display_name,
+                    id: customId
+                })
+            )
+            map.eachLayer((layer) => {
+                if (layer.options.id && layer.options.id !== customId) {
+                    map.removeLayer(layer)
+                }
+            })
+
+            marker.addTo(map).bindPopup(display_name);
+
+            if (this.view.checkLocate()) {
+                // turf
+                this.greatCircle(_features[0])
+            }
+            else {
+                if (type === 'Polygon' || type === 'MultiPolygon'
+                    || type === 'LineString') map.fitBounds(coordinates)
+
+                if (type === 'Point') map.setView(coordinates, 8);
+            }
+            this.view.onOffLoading(false)
+        }
         this.view.search({
-            features: this.#reverse(features),
+            // features: this.#reverse(_features),
+            features: _features,
             distance: feature => this.distance(feature),
             fn: ({ results, checkLocate }) => {
                 const _results = this.validateJson(results)
@@ -206,7 +257,7 @@ export default class MapController extends AbstractController {
 
                 if (checkLocate()) {
                     // turf
-                    this.greatCircle(_results)
+                    this.greatCircle(_features[0])
                 }
                 else {
                     if (type === 'Polygon' || type === 'MultiPolygon'
@@ -215,7 +266,8 @@ export default class MapController extends AbstractController {
                     if (type === 'Point') map.setView(coordinates, 8);
                 }
                 this.view.onOffLoading(false)
-            }
+            },
+            interactive
         })
     }
 
@@ -281,7 +333,7 @@ export default class MapController extends AbstractController {
                 const marker   = L.marker(city, {
                     id: turfId
                 })
-                const distance = parseInt(locate.getLatLng().distanceTo(marker.getLatLng()))
+                const distance = parseFloat(locate.getLatLng().distanceTo(marker.getLatLng()))
                 const popup    = `${feature.properties.display_name}<strong><p>Distance Straight: ${that.formatNumber(distance)} approximately</p></strong>` //city.toString()
 
                 marker.bindPopup(popup).addTo(map);
@@ -329,187 +381,187 @@ export default class MapController extends AbstractController {
         })
     }
 
-    #distance() {
-        const map = this.#map
-        /* eslint-disable no-undef */
-        /**
-         * Distance between cities on map
-         */
+    // #distance() {
+    //     const map = this.#map
+    //     /* eslint-disable no-undef */
+    //     /**
+    //      * Distance between cities on map
+    //      */
 
-        // config map
-        let config = {
-            minZoom: 2,
-            maxZoom: 18,
-        };
-        // magnification with which the map will start
-        const zoom = 7;
-        // co-ordinates
-        const lat = 52.22977;
-        const lng = 21.01178;
+    //     // config map
+    //     let config = {
+    //         minZoom: 2,
+    //         maxZoom: 18,
+    //     };
+    //     // magnification with which the map will start
+    //     const zoom = 7;
+    //     // co-ordinates
+    //     const lat = 52.22977;
+    //     const lng = 21.01178;
 
-        // calling map
-        // const map = L.map("map", config).setView([lat, lng], zoom);
+    //     // calling map
+    //     // const map = L.map("map", config).setView([lat, lng], zoom);
 
-        // Used to load and display tile layers on the map
-        // Most tile servers require attribution, which you can set under `Layer`
-        // L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        //     attribution:
-        //     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        // }).addTo(map);
+    //     // Used to load and display tile layers on the map
+    //     // Most tile servers require attribution, which you can set under `Layer`
+    //     // L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    //     //     attribution:
+    //     //     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    //     // }).addTo(map);
 
-        const length = document.querySelector(".length");
-        const cityA = document.querySelector("#cityA");
-        const cityB = document.querySelector("#cityB");
-        const clearButton = document.querySelector(".clear-distance");
+    //     const length = document.querySelector(".length");
+    //     const cityA = document.querySelector("#cityA");
+    //     const cityB = document.querySelector("#cityB");
+    //     const clearButton = document.querySelector(".clear-distance");
 
-        let markers = [];
-        let featureGroups = [];
+    //     let markers = [];
+    //     let featureGroups = [];
 
-        function results({ currentValue, matches, template }) {
-            const regex = new RegExp(currentValue, "i");
-            // checking if we have results if we don't
-            // take data from the noResults method
-            return matches === 0 ? template
-                : matches
-                    .map((element) => {
-                        return `<li class="autocomplete-item" role="option" aria-selected="false">
-                        <p>${element.properties.display_name.replace(
-                            regex,
-                            (str) => `<b>${str}</b>`
-                        )}</p>
-                        </li> `;
-                    })
-                    .join("");
-        }
+    //     function results({ currentValue, matches, template }) {
+    //         const regex = new RegExp(currentValue, "i");
+    //         // checking if we have results if we don't
+    //         // take data from the noResults method
+    //         return matches === 0 ? template
+    //             : matches
+    //                 .map((element) => {
+    //                     return `<li class="autocomplete-item" role="option" aria-selected="false">
+    //                     <p>${element.properties.display_name.replace(
+    //                         regex,
+    //                         (str) => `<b>${str}</b>`
+    //                     )}</p>
+    //                     </li> `;
+    //                 })
+    //                 .join("");
+    //     }
 
-        function nominatim(currentValue) {
-            const api = `https://nominatim.openstreetmap.org/search?format=geojson&limit=5&q=${encodeURI(currentValue)}`;
+    //     function nominatim(currentValue) {
+    //         const api = `https://nominatim.openstreetmap.org/search?format=geojson&limit=5&q=${encodeURI(currentValue)}`;
 
-            return new Promise((resolve) => {
-                fetch(api)
-                    .then((response) => response.json())
-                    .then((data) => {
-                        resolve(data.features);
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-            });
-        }
+    //         return new Promise((resolve) => {
+    //             fetch(api)
+    //                 .then((response) => response.json())
+    //                 .then((data) => {
+    //                     resolve(data.features);
+    //                 })
+    //                 .catch((error) => {
+    //                     console.error(error);
+    //                 });
+    //         });
+    //     }
 
-        function addMarkerToMap(object) {
-            const { display_name } = object.properties;
-            const arr = object.geometry.coordinates.reverse();
+    //     function addMarkerToMap(object) {
+    //         const { display_name } = object.properties;
+    //         const arr = object.geometry.coordinates.reverse();
 
-            const customId = Math.random();
+    //         const customId = Math.random();
 
-            const marker = L.marker(arr, {
-                title: display_name,
-                id: customId,
-            });
+    //         const marker = L.marker(arr, {
+    //             title: display_name,
+    //             id: customId,
+    //         });
 
-            // add marker to map
-            marker.addTo(map).bindPopup(display_name);
+    //         // add marker to map
+    //         marker.addTo(map).bindPopup(display_name);
 
-            map.setView(arr, 8);
+    //         map.setView(arr, 8);
 
-            // add marker to array markers
-            markers.push(arr);
+    //         // add marker to array markers
+    //         markers.push(arr);
 
-            // add marker to array featureGroup
-            featureGroups.push(marker);
+    //         // add marker to array featureGroup
+    //         featureGroups.push(marker);
 
-            if (markers.length == 2) {
-                // add polyline between cities
-                L.polyline(markers, {
-                    color: "red",
-                }).addTo(map);
+    //         if (markers.length == 2) {
+    //             // add polyline between cities
+    //             L.polyline(markers, {
+    //                 color: "red",
+    //             }).addTo(map);
 
-                // matching all markers to the map view
-                let group = new L.featureGroup(featureGroups);
-                map.fitBounds(group.getBounds(), {
-                    padding: [10, 10], // adding padding to map
-                });
+    //             // matching all markers to the map view
+    //             let group = new L.featureGroup(featureGroups);
+    //             map.fitBounds(group.getBounds(), {
+    //                 padding: [10, 10], // adding padding to map
+    //             });
 
-                // add text 'Length (in kilometers):'
-                distanceBetweenMarkers();
-            }
+    //             // add text 'Length (in kilometers):'
+    //             distanceBetweenMarkers();
+    //         }
 
-            if (markers.length > 2) {
-                clearData();
-            }
-        }
+    //         if (markers.length > 2) {
+    //             clearData();
+    //         }
+    //     }
 
-        function clearData() {
-            // clear array
-            markers = [];
+    //     function clearData() {
+    //         // clear array
+    //         markers = [];
 
-            // back to default coordinate
-            map.panTo([lat, lng]);
+    //         // back to default coordinate
+    //         map.panTo([lat, lng]);
 
-            // set info ;)
-            length.textContent = "Markers and plines have been removed";
+    //         // set info ;)
+    //         length.textContent = "Markers and plines have been removed";
 
-            // remove polyline
-            for (i in map._layers) {
-                if (map._layers[i]._path != undefined) {
-                    try {
-                        map.removeLayer(map._layers[i]);
-                    } catch (e) {
-                        console.log("problem with " + e + map._layers[i]);
-                    }
-                }
-            }
+    //         // remove polyline
+    //         for (i in map._layers) {
+    //             if (map._layers[i]._path != undefined) {
+    //                 try {
+    //                     map.removeLayer(map._layers[i]);
+    //                 } catch (e) {
+    //                     console.log("problem with " + e + map._layers[i]);
+    //                 }
+    //             }
+    //         }
 
-            // remove markers
-            map.eachLayer((layer) => {
-                if (layer.options && layer.options.pane === "markerPane") {
-                    map.removeLayer(layer);
-                }
-            });
-        }
+    //         // remove markers
+    //         map.eachLayer((layer) => {
+    //             if (layer.options && layer.options.pane === "markerPane") {
+    //                 map.removeLayer(layer);
+    //             }
+    //         });
+    //     }
 
-        function distanceBetweenMarkers() {
-            const from = L.marker(markers[0]).getLatLng();
-            const to = L.marker(markers[1]).getLatLng();
+    //     function distanceBetweenMarkers() {
+    //         const from = L.marker(markers[0]).getLatLng();
+    //         const to = L.marker(markers[1]).getLatLng();
 
-            // in km
-            const distance = from.distanceTo(to) / 1000;
+    //         // in km
+    //         const distance = from.distanceTo(to) / 1000;
 
-            length.textContent = `Length (in kilometers): ${distance.toFixed(5)}`;
-        }
+    //         length.textContent = `Length (in kilometers): ${distance.toFixed(5)}`;
+    //     }
 
-        window.addEventListener("DOMContentLoaded", () => {
-            if (!document.querySelector('#cityA')) return
+    //     window.addEventListener("DOMContentLoaded", () => {
+    //         if (!document.querySelector('#cityA')) return
 
-            ["cityA", "cityB"].forEach((city) => {
-                const auto = new Autocomplete(city, {
-                    clearButton: false,
-                    howManyCharacters: 2,
+    //         ["cityA", "cityB"].forEach((city) => {
+    //             const auto = new Autocomplete(city, {
+    //                 clearButton: false,
+    //                 howManyCharacters: 2,
 
-                    onSearch: ({ currentValue }) => nominatim(currentValue),
+    //                 onSearch: ({ currentValue }) => nominatim(currentValue),
 
-                    onResults: (object) => results(object),
+    //                 onResults: (object) => results(object),
 
-                    onSubmit: ({ object }) => addMarkerToMap(object),
+    //                 onSubmit: ({ object }) => addMarkerToMap(object),
 
-                    // the method presents no results
-                    noResults: ({ currentValue, template }) =>
-                        template(`<li>No results found: "${currentValue}"</li>`),
-                });
+    //                 // the method presents no results
+    //                 noResults: ({ currentValue, template }) =>
+    //                     template(`<li>No results found: "${currentValue}"</li>`),
+    //             });
 
-                clearButton.addEventListener("click", () => {
-                    clearData();
+    //             clearButton.addEventListener("click", () => {
+    //                 clearData();
 
-                    // destroy method
-                    auto.destroy();
+    //                 // destroy method
+    //                 auto.destroy();
 
-                    // focus on first input
-                    document.querySelector("#cityA").focus();
-                });
-            });
-        });
-    }
+    //                 // focus on first input
+    //                 document.querySelector("#cityA").focus();
+    //             });
+    //         });
+    //     });
+    // }
 
     // #getCoordinates(features) {
     //     let coordinates = []
@@ -766,10 +818,10 @@ export default class MapController extends AbstractController {
         const formatter = new Intl.NumberFormat("en-US", { // Make users locale dynamic
             style: 'unit',
             unit: 'kilometer',
-            unitDisplay: 'short',
-            maximumFractionDigits: 0
+            unitDisplay: 'long',
+            maximumFractionDigits: 2
         });
 
-        return formatter.format(num) // km
+        return formatter.format(num / 1000) // km
     }
 }

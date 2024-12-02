@@ -117,8 +117,15 @@ export default class MapView extends AbstractView {
 
                 if (!results) return
                 that.view.onOffLoading(true)
-                fn({ results, checkLocate: this.checkLocate})
+                fn({ results, checkLocate: _ => this.checkLocate()})
         })
+    }
+
+    mapInteractive() {
+        document.querySelector('#map').setAttribute('title', 'click on the map to demarcate region')
+        const span = document.createElement('span')
+        span.innerHTML = '<span style="float:right; margin-top: -10px; color: gray">click on the map to demarcate region</span>'
+        document.querySelector('#map').before(span)
     }
 
     // actionSearch({ getFeatures, reverse, greatCircle, map, validateJson, distance }) {

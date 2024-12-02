@@ -219,4 +219,18 @@ export default class MapService {
                 });
             });
     }
+
+    getApiIntective({ latlng, zoom }) {
+        const url = `https://nominatim.openstreetmap.org/reverse.php?lat=${latlng.lat}&lon=${latlng.lng}&zoom=${zoom}&format=geojson&polygon_geojson=1&addressdetails=1&limit=1`;
+        return new Promise((resolve) => {
+            fetch(url)
+                .then((response) => response.json())
+                .then((data) => {
+                    resolve(data.features);
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            });
+    }
 }
